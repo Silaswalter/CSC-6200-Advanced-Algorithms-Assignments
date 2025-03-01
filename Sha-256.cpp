@@ -8,7 +8,7 @@
 
 using namespace std;
 
-const unsigned int K[64] = {
+const unsigned int constantNumbers[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -19,27 +19,27 @@ const unsigned int K[64] = {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-unsigned int rightRotate(unsigned int value, unsigned int rotation)
+unsigned int shift(unsigned int number, unsigned int rotation)
 {
-    unsigned int right_shifted = value >> rotation;
-    unsigned int left_shifted = value << (32 - rotation);
+    unsigned int right_shifted = number >> rotation;
+    unsigned int left_shifted = number << (32 - rotation);
     return right_shifted + left_shifted;
 }
 
 
-void processBlock(const unsigned char block[64], unsigned int H[8])
+void processBlock(const unsigned char message[64], unsigned int H[8])
 {
-    unsigned int W[64];
+    unsigned int schedule[64];
     for(int i = 0; i < 16; ++i)
     {
-        W[i] = (block[i * 4] << 24) | (block[i * 4 + 1] << 16) | (block[i * 4 + 2] << 8) | block[i * 4 + 3];
+        schedule[i] = (message[i * 4] << 24) | (message[i * 4 + 1] << 16) | (message[i * 4 + 2] << 8) | message[i * 4 + 3];
     }
 
     for(int i = 16; i < 64; ++i)
     {
-        unsigned int s0 = rightRotate(W[i - 15], 7) ^ rightRotate(W[i - 15], 18) ^ (W[i - 15] >> 3);
-        unsigned int s1 = rightRotate(W[i - 2], 17) ^ rightRotate(W[i - 2], 19) ^ (W[i - 2] >> 10);
-        W[i] = W[i - 16] + s0 + W[i - 7] + s1;
+        unsigned int s0 = shift(schedule[i - 15], 7) ^ shift(schedule[i - 15], 18) ^ (schedule[i - 15] >> 3);
+        unsigned int s1 = shift(schedule[i - 2], 17) ^ shift(schedule[i - 2], 19) ^ (schedule[i - 2] >> 10);
+        schedule[i] = schedule[i - 16] + s0 + schedule[i - 7] + s1;
     }
 
     unsigned int a = H[0];
@@ -53,10 +53,10 @@ void processBlock(const unsigned char block[64], unsigned int H[8])
     
     for(int i = 0; i < 64; ++i)
     {
-        unsigned int S1 = rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25);
+        unsigned int S1 = shift(e, 6) ^ shift(e, 11) ^ shift(e, 25);
         unsigned int ch = (e & f) ^ (~e & g);
-        unsigned int temp1 = h + S1 + ch + K[i] + W[i];
-        unsigned int S0 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
+        unsigned int temp1 = h + S1 + ch + constantNumbers[i] + schedule[i];
+        unsigned int S0 = shift(a, 2) ^ shift(a, 13) ^ shift(a, 22);
         unsigned int maj = (a & b) ^ (a & c) ^ (b & c);
         unsigned int temp2 = S0 + maj;
 
@@ -80,9 +80,9 @@ void processBlock(const unsigned char block[64], unsigned int H[8])
     H[7] = H[7] + h;
 }
 
-string sha256(string input)
+string ExecuteSha256(string input)
 {
-    unsigned int H[8] = {
+    unsigned int initialHash[8] = {
         0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
         0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
     };
@@ -101,14 +101,14 @@ string sha256(string input)
 
     for(int i = 0; i < bufferSize; i = i + 64)
     {
-        processBlock(buffer.data() + i, H);
+        processBlock(buffer.data() + i, initialHash);
     }
 
     stringstream result;
 
     for(int i = 0; i < 8; ++i)
     {
-        result << hex << setw(8) << setfill('0') << H[i];
+        result << hex << setw(8) << setfill('0') << initialHash[i];
     }
     return result.str();
 }
@@ -121,17 +121,17 @@ string getFileContent(string& filePath)
         std::cerr << "Error opening file: " << filePath << std::endl;
         return "";
     }
-    stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
+    stringstream holder;
+    holder << file.rdbuf();
+    return holder.str();
 }
 
 int main()
 {
-    string filePath = "Mark.txt";
-    string fileContent = getFileContent(filePath);
-    //string fileContent = "Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!";
-    string hash = sha256(fileContent);
-    cout << "SHA-256 hash: " << hash << endl;
+    string filePath = "example.txt";
+    //string fileContent = getFileContent(filePath);
+    string fileContent = "Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!Hello, world!";
+    string output = ExecuteSha256(fileContent);
+    cout << "SHA-256 Result: " << output << endl;
     return 0;
 }
